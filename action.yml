@@ -1,0 +1,9 @@
+name: 'Delete Draft Releases'
+description: 'Delete all draft releases in your repository'
+author: 'Hugo Ferrando Seage'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
+branding:
+  icon: 'tag'
+  color: 'gray-dark'
