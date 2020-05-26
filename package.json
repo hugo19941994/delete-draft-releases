@@ -25,7 +25,7 @@
     "@actions/github": "^2.2.0"
   },
   "devDependencies": {
-    "@zeit/ncc": "^0.22.2",
+    "@zeit/ncc": "^0.22.3",
     "eslint": "^7.1.0",
     "eslint-config-airbnb": "^18.1.0",
     "eslint-config-prettier": "^6.11.0",
