@@ -20,7 +20,7 @@
   "author": "Hugo Ferrando Seage <me@hugofs.com>",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.2.4",
+    "@actions/core": "^1.10.0",
     "@actions/exec": "^1.0.4",
     "@actions/github": "^5.0.0",
     "parse-duration": "^1.0.0"
