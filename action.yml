@@ -2,7 +2,7 @@ name: 'Delete Draft Releases'
 description: 'Delete draft releases in your repository'
 author: 'Hugo Ferrando Seage'
 runs:
-  using: 'node16'
+  using: 'node20'
   main: 'dist/index.js'
 branding:
   icon: 'tag'
