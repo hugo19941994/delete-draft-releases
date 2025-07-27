@@ -1,7 +1,7 @@
-const core = require('@actions/core');
-const github = require('@actions/github');
+import { setFailed } from '@actions/core';
+import { getOctokit, context } from '@actions/github';
 
-const parse = require('parse-duration');
+import parse from 'parse-duration';
 
 function checkDuration(releaseDate) {
   if (process.env.INPUT_THRESHOLD) {
@@ -13,34 +13,47 @@ function checkDuration(releaseDate) {
   return true;
 }
 
-async function run() {
+export default async function run() {
   try {
-    const octokit = github.getOctokit(process.env.GITHUB_TOKEN);
+    const octokit = getOctokit(process.env.GITHUB_TOKEN || '');
 
     // Get owner and repo from context of payload that triggered the action
-    const { owner, repo } = github.context.repo;
+    const { owner, repo } = context.repo;
 
     // List all releases
     // API Documentation: https://developer.github.com/v3/repos/releases/#list-releases-for-a-repository
     // Octokit Documentation: https://octokit.github.io/rest.js/#octokit-routes-repos-list-releases
-    // TODO: Pagination support
-    const listReleasesResponse = await octokit.rest.repos.listReleases({
+    const listReleasesResponse = await octokit.paginate(octokit.rest.repos.listReleases, {
       owner,
       repo
     });
 
-    if (listReleasesResponse.status !== 200) {
-      throw new Error('Error listing releases');
+    if (!listReleasesResponse || !Array.isArray(listReleasesResponse)) {
+      throw new Error(`Error listing releases`);
     }
 
+    if (listReleasesResponse.length === 0) {
+      console.log('No releases found - make sure your token has `content: write` permissions');
+      return;
+    }
+
+    console.log(`Found ${listReleasesResponse.length} releases`);
+
     const deleteTasks = [];
-    listReleasesResponse.data.forEach((release) => {
+    listReleasesResponse.forEach((release) => {
       if (release.draft) {
         // Check if it meets the threshold
         if (checkDuration(release.created_at)) {
           // API Documentation: https://developer.github.com/v3/repos/releases/#delete-a-release
           // Octokit Documentation: https://octokit.github.io/rest.js/#octokit-routes-repos-delete-release
-          deleteTasks.push(octokit.rest.repos.deleteRelease({ owner, repo, release_id: release.id }));
+          console.log(`Deleting draft release ${release.id} created at ${release.created_at}`);
+          deleteTasks.push(
+            octokit.rest.repos.deleteRelease({
+              owner,
+              repo,
+              release_id: release.id
+            })
+          );
         }
       }
     });
@@ -52,8 +65,6 @@ async function run() {
       }
     });
   } catch (error) {
-    core.setFailed(error.message);
+    setFailed(error.message);
   }
 }
-
-module.exports = run;

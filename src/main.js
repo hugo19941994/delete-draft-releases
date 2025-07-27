@@ -1,5 +1,7 @@
-const run = require('./delete-draft-releases');
+/* v8 ignore start */
+import run from './delete-draft-releases.js';
 
-if (require.main === module) {
+if (process.argv[1] === import.meta.filename) {
   run();
 }
+/* v8 ignore stop */

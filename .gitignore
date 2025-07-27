@@ -90,3 +90,6 @@ typings/
 # Misc
 .idea/
 .DS_Store
+
+# vitest
+.vite

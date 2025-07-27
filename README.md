@@ -12,8 +12,6 @@ Create a workflow `.yml` file in your `.github/workflows` directory. An [example
 
 **No outputs are available in this version.**
 
-**Only the first 30 releases from a repo are checked.**
-
 ### Example workflows
 
 On every `push` it deletes any release marked as a draft:
@@ -23,6 +21,9 @@ on:
   push:
 
 name: Delete Draft Releases
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -42,6 +43,9 @@ on:
   push:
 
 name: Delete Draft Releases older than 5 days
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -65,7 +69,7 @@ The minimum amount of time is 1 second
 * hours `h` `hr`
 * days `d`
 * weeks `w` `wk`
-* months
+* months `mo`
 * years `y` `yr`
 
 ## License

@@ -1,41 +1,52 @@
-jest.mock('@actions/core');
-jest.mock('@actions/github');
+import { describe, test, beforeEach, afterAll, vi, expect } from 'vitest';
+import * as core from '@actions/core';
+import * as github from '@actions/github';
+import run from '../src/delete-draft-releases';
 
-const core = require('@actions/core');
-const github = require('@actions/github');
-const run = require('../src/delete-draft-releases');
+vi.mock('@actions/core');
+vi.mock('@actions/github');
 
-/* eslint-disable no-undef */
 describe('Delete Draft Releases', () => {
+  let paginate;
   let listReleases;
   let deleteRelease;
   const OLD_ENV = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...OLD_ENV };
+    process.env.GITHUB_TOKEN = 'fake-token';
   });
 
   afterAll(() => {
     process.env = OLD_ENV;
   });
 
-  setup = (listMock, deleteMock) => {
-    listReleases = jest.fn().mockReturnValue(listMock);
+  const setup = (listMock, deleteMock) => {
+    listReleases = vi.fn().mockReturnValue(listMock);
     listReleases.mockClear();
 
-    deleteRelease = jest.fn().mockReturnValue({ status: 204 });
+    deleteRelease = vi.fn().mockReturnValue({ status: 204 });
     if (deleteMock) {
-      deleteRelease = jest.fn().mockReturnValue(deleteMock);
+      deleteRelease = vi.fn().mockReturnValue(deleteMock);
     }
     deleteRelease.mockClear();
 
-    github.context.repo = {
-      owner: 'owner',
-      repo: 'repo'
-    };
+    // Mock paginate to return the data directly
+    paginate = vi.fn().mockResolvedValue(listMock);
+    paginate.mockClear();
+
+    Object.defineProperty(github, 'context', {
+      value: {
+        repo: {
+          owner: 'owner',
+          repo: 'repo'
+        }
+      }
+    });
 
     const octokit = {
+      paginate,
       rest: {
         repos: {
           listReleases,
@@ -44,25 +55,20 @@ describe('Delete Draft Releases', () => {
       }
     };
 
-    github.getOctokit.mockImplementation(() => octokit);
+    vi.spyOn(github, 'getOctokit').mockImplementation(() => octokit);
   };
 
   test('Delete a single draft release', async () => {
-    setup({
-      data: [
-        {
-          id: 'releaseId',
-          draft: true
-        }
-      ],
-      status: 200
-    });
-
-    core.getInput = jest.fn();
+    setup([
+      {
+        id: 'releaseId',
+        draft: true
+      }
+    ]);
 
     await run();
 
-    expect(listReleases).toHaveBeenLastCalledWith({
+    expect(paginate).toHaveBeenLastCalledWith(listReleases, {
       owner: 'owner',
       repo: 'repo'
     });
@@ -75,72 +81,33 @@ describe('Delete Draft Releases', () => {
   });
 
   test('Delete multiple draft releases', async () => {
-    setup({
-      data: [
-        {
-          id: 'releaseId1',
-          draft: true
-        },
-        {
-          id: 'releaseId2',
-          draft: true
-        },
-        {
-          id: 'releaseId3',
-          draft: false
-        },
-        {
-          id: 'releaseId4',
-          draft: true
-        }
-      ],
-      status: 200
-    });
-
-    core.getInput = jest.fn();
+    setup([
+      { id: 'releaseId1', draft: true },
+      { id: 'releaseId2', draft: true },
+      { id: 'releaseId3', draft: false },
+      { id: 'releaseId4', draft: true }
+    ]);
 
     await run();
 
-    expect(listReleases).toHaveBeenLastCalledWith({
+    expect(paginate).toHaveBeenLastCalledWith(listReleases, {
       owner: 'owner',
       repo: 'repo'
     });
 
     expect(deleteRelease.mock.calls).toEqual([
-      [
-        {
-          owner: 'owner',
-          repo: 'repo',
-          release_id: 'releaseId1'
-        }
-      ],
-      [
-        {
-          owner: 'owner',
-          repo: 'repo',
-          release_id: 'releaseId2'
-        }
-      ],
-      [
-        {
-          owner: 'owner',
-          repo: 'repo',
-          release_id: 'releaseId4'
-        }
-      ]
+      [{ owner: 'owner', repo: 'repo', release_id: 'releaseId1' }],
+      [{ owner: 'owner', repo: 'repo', release_id: 'releaseId2' }],
+      [{ owner: 'owner', repo: 'repo', release_id: 'releaseId4' }]
     ]);
   });
 
   test('Error listing', async () => {
-    setup({
-      status: 500
-    });
-
-    core.getInput = jest.fn();
+    setup(null); // Return null to trigger the error
 
     await run();
 
-    expect(listReleases).toHaveBeenLastCalledWith({
+    expect(paginate).toHaveBeenLastCalledWith(listReleases, {
       owner: 'owner',
       repo: 'repo'
     });
@@ -150,26 +117,11 @@ describe('Delete Draft Releases', () => {
   });
 
   test('Error deleting', async () => {
-    setup(
-      {
-        data: [
-          {
-            id: 'releaseId',
-            draft: true
-          }
-        ],
-        status: 200
-      },
-      {
-        status: 500
-      }
-    );
-
-    core.getInput = jest.fn();
+    setup([{ id: 'releaseId', draft: true }], { status: 500 });
 
     await run();
 
-    expect(listReleases).toHaveBeenLastCalledWith({
+    expect(paginate).toHaveBeenLastCalledWith(listReleases, {
       owner: 'owner',
       repo: 'repo'
     });
@@ -184,38 +136,21 @@ describe('Delete Draft Releases', () => {
   });
 
   test('No drafts meet threshold', async () => {
-    setup({
-      data: [
-        {
-          id: 'releaseId1',
-          draft: true,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 'releaseId2',
-          draft: true,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 'releaseId3',
-          draft: false,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 'releaseId4',
-          draft: true,
-          created_at: new Date().toISOString()
-        }
-      ],
-      status: 200
-    });
+    setup([
+      { id: 'releaseId1', draft: true, created_at: new Date().toISOString() },
+      { id: 'releaseId2', draft: true, created_at: new Date().toISOString() },
+      {
+        id: 'releaseId3',
+        draft: false,
+        created_at: new Date().toISOString()
+      },
+      { id: 'releaseId4', draft: true, created_at: new Date().toISOString() }
+    ]);
     process.env.INPUT_THRESHOLD = '1d';
-
-    core.getInput = jest.fn();
 
     await run();
 
-    expect(listReleases).toHaveBeenLastCalledWith({
+    expect(paginate).toHaveBeenLastCalledWith(listReleases, {
       owner: 'owner',
       repo: 'repo'
     });
@@ -224,93 +159,71 @@ describe('Delete Draft Releases', () => {
   });
 
   test('Delete drafts that meet threshold', async () => {
-    setup({
-      data: [
-        {
-          id: 'releaseId1',
-          draft: true,
-          created_at: new Date(Date.now() - 5000).toISOString()
-        },
-        {
-          id: 'releaseId2',
-          draft: true,
-          created_at: new Date(Date.now() - 5000).toISOString()
-        },
-        {
-          id: 'releaseId3',
-          draft: false,
-          created_at: new Date(Date.now() - 5000).toISOString()
-        },
-        {
-          id: 'releaseId4',
-          draft: true,
-          created_at: new Date(Date.now()).toISOString()
-        }
-      ],
-      status: 200
-    });
+    setup([
+      {
+        id: 'releaseId1',
+        draft: true,
+        created_at: new Date(Date.now() - 5000).toISOString()
+      },
+      {
+        id: 'releaseId2',
+        draft: true,
+        created_at: new Date(Date.now() - 5000).toISOString()
+      },
+      {
+        id: 'releaseId3',
+        draft: false,
+        created_at: new Date(Date.now() - 5000).toISOString()
+      },
+      {
+        id: 'releaseId4',
+        draft: true,
+        created_at: new Date(Date.now()).toISOString()
+      }
+    ]);
     process.env.INPUT_THRESHOLD = '1s';
-
-    core.getInput = jest.fn();
 
     await run();
 
-    expect(listReleases).toHaveBeenLastCalledWith({
+    expect(paginate).toHaveBeenLastCalledWith(listReleases, {
       owner: 'owner',
       repo: 'repo'
     });
 
     expect(deleteRelease.mock.calls).toEqual([
-      [
-        {
-          owner: 'owner',
-          repo: 'repo',
-          release_id: 'releaseId1'
-        }
-      ],
-      [
-        {
-          owner: 'owner',
-          repo: 'repo',
-          release_id: 'releaseId2'
-        }
-      ]
+      [{ owner: 'owner', repo: 'repo', release_id: 'releaseId1' }],
+      [{ owner: 'owner', repo: 'repo', release_id: 'releaseId2' }]
     ]);
   });
 
   test('Invalid threshold', async () => {
-    setup({
-      data: [
-        {
-          id: 'releaseId1',
-          draft: true,
-          created_at: new Date(Date.now() - 5000).toISOString()
-        },
-        {
-          id: 'releaseId2',
-          draft: true,
-          created_at: new Date(Date.now() - 5000).toISOString()
-        },
-        {
-          id: 'releaseId3',
-          draft: false,
-          created_at: new Date(Date.now() - 5000).toISOString()
-        },
-        {
-          id: 'releaseId4',
-          draft: true,
-          created_at: new Date(Date.now()).toISOString()
-        }
-      ],
-      status: 200
-    });
+    setup([
+      {
+        id: 'releaseId1',
+        draft: true,
+        created_at: new Date(Date.now() - 5000).toISOString()
+      },
+      {
+        id: 'releaseId2',
+        draft: true,
+        created_at: new Date(Date.now() - 5000).toISOString()
+      },
+      {
+        id: 'releaseId3',
+        draft: false,
+        created_at: new Date(Date.now() - 5000).toISOString()
+      },
+      {
+        id: 'releaseId4',
+        draft: true,
+        created_at: new Date(Date.now()).toISOString()
+      }
+    ]);
     process.env.INPUT_THRESHOLD = '-1invalidthreshold';
-
-    core.getInput = jest.fn();
 
     await run();
 
-    expect(listReleases).toHaveBeenLastCalledWith({
+    expect(paginate).toHaveBeenLastCalledWith(listReleases, {
       owner: 'owner',
       repo: 'repo'
     });
