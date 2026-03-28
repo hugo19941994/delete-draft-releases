@@ -1,6 +1,6 @@
-import { describe, test, beforeEach, afterAll, vi, expect } from 'vitest';
 import * as core from '@actions/core';
 import * as github from '@actions/github';
+import { afterAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import run from '../src/delete-draft-releases';
 
 vi.mock('@actions/core');

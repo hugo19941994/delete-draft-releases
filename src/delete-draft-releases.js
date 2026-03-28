@@ -1,5 +1,5 @@
 import { setFailed } from '@actions/core';
-import { getOctokit, context } from '@actions/github';
+import { context, getOctokit } from '@actions/github';
 
 import parse from 'parse-duration';
 
