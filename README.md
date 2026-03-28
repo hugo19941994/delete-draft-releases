@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Delete drafts
-        uses: hugo19941994/delete-draft-releases@v1.0.0
+        uses: hugo19941994/delete-draft-releases@v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -53,7 +53,7 @@ jobs:
 
     steps:
       - name: Delete drafts
-        uses: hugo19941994/delete-draft-releases@v1.0.0
+        uses: hugo19941994/delete-draft-releases@v3.0.0
         with:
           threshold: 5d
         env:
