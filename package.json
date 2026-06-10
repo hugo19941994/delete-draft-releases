@@ -36,7 +36,7 @@
     "@vercel/ncc": "^0.43.0",
     "@vitest/coverage-v8": "^4.1.7",
     "globals": "^17.6.0",
-    "prettier": "^3.8.3",
+    "prettier": "^3.8.4",
     "vitest": "^4.1.8"
   }
 }
