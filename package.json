@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
-    "@vercel/ncc": "^0.38.4",
+    "@vercel/ncc": "^0.43.0",
     "@vitest/coverage-v8": "^4.1.7",
     "globals": "^17.6.0",
     "prettier": "^3.8.3",
