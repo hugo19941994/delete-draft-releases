@@ -35,7 +35,7 @@
     "@biomejs/biome": "2.5.0",
     "@vercel/ncc": "^0.44.0",
     "@vitest/coverage-v8": "^4.1.9",
-    "globals": "^17.6.0",
+    "globals": "^17.7.0",
     "prettier": "^3.8.4",
     "vitest": "^4.1.9"
   }
